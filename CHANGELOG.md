@@ -1,0 +1,1 @@
+- Added per-atlas exploration; copies with the same UUID share progress.

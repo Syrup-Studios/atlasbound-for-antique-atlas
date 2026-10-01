@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "${modId}",
+  "version": "${version}",
+  "name": "${modName}",
+  "description": "${modDescription}",
+  "license": "${license}",
+  "environment": "*",
+  "mixins": [
+    "atlasbound.mixins.json",
+    { "config": "atlasbound.client.mixins.json", "environment": "client" }
+  ],
+  "entrypoints": {
+    "main": ["net.syrupstudios.atlasbound.loaders.fabric.FabricEntrypoint"],
+    "client": ["net.syrupstudios.atlasbound.client.AtlasboundClient"]
+  },
+  "depends": {
+    "fabricloader": ">=${loader}",
+    "minecraft": "${mc}",
+    "fabric-api": "*",
+    "surveyor": "${surveyor}",
+    "aa4-atlas": "${aa4Atlas}",
+    "java": ">=21"
+  },
+  "recommends": {
+    "antique_atlas": "${antiqueAtlas}"
+  }
+}

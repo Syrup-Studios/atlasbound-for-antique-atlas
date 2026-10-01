@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.syrupstudios.atlasbound.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "AtlasItemUseMixin",
+    "CartographyTableMixin",
+    "CartographyTableMixin$AtlasInputSlotMixin",
+    "CartographyTableMixin$BookInputSlotMixin",
+    "CartographyTableMixin$ResultSlotMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

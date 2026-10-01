@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.syrupstudios.atlasbound.mixin.client",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "AtlasOpenMixin",
+    "WorldAtlasDataMixin",
+    "ActiveAtlasRenderMixin",
+    "MarkerModalMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
