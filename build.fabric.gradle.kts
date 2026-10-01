@@ -11,7 +11,6 @@ base.archivesName = property("mod.id") as String
 
 repositories {
     maven("https://repo.sleeping.town/")
-    maven("https://api.modrinth.com/maven")
 }
 
 dependencies {
@@ -21,7 +20,6 @@ dependencies {
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("deps.fabric_api")}")
     modImplementation("folk.sisby:surveyor:${property("deps.surveyor")}")
     modImplementation("folk.sisby:antique-atlas:${property("deps.antique_atlas")}")
-    modImplementation("maven.modrinth:aR9FhY20:${property("deps.aa4_atlas_artifact")}")
 }
 
 loom {
@@ -59,7 +57,6 @@ tasks.processResources {
         "loader" to project.property("deps.fabric_loader"),
         "surveyor" to project.property("deps.surveyor"),
         "antiqueAtlas" to project.property("deps.antique_atlas"),
-        "aa4Atlas" to project.property("deps.aa4_atlas"),
         "authors" to project.property("mod.authors"),
         "homepage" to project.property("mod.homepage"),
         "issues" to project.property("mod.issues"),
@@ -132,7 +129,6 @@ publishMods {
         environment = CLIENT_AND_SERVER
         requires("surveyor")
         requires("antique-atlas-4")
-        requires("aa4-atlas")
         if (loader == "fabric") requires("fabric-api")
         else {
             requires("connector")

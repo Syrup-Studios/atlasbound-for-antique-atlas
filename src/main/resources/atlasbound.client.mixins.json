@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "AtlasOpenMixin",
+    "HandheldAtlasMixin",
     "WorldAtlasDataMixin",
     "ActiveAtlasRenderMixin",
     "MarkerModalMixin"

@@ -8,7 +8,7 @@ The target is Minecraft 1.21.1. Build and run commands use Java 21.
 
 ## Install
 
-Install Atlasbound, Fabric API, Surveyor 1.2.3+1.21, and AA4 Atlas 1.1.2+1.21 on the client and server. Clients also need Antique Atlas 4 3.1.2+1.21. Dedicated servers do not need Antique Atlas 4.
+Install Atlasbound, Fabric API, and Surveyor 1.2.3+1.21 on the client and server. Clients also need Antique Atlas 4 3.1.2+1.21 for the map screen. Craft the Atlasbound atlas from one book and one compass. The AA4 Atlas addon is not required.
 
 Both targets use Fabric Loader APIs. Fabric runs the jar directly. The NeoForge target makes a Connector-compatible Fabric jar. It is not a native NeoForge build. NeoForge needs Sinytra Connector and Forgified Fabric API. Runtime support with Connector has not been checked in-game.
 
@@ -26,7 +26,7 @@ To select a Stonecutter target, run `./gradlew "Set active project to 1.21.1-fab
 
 ## Publish
 
-The `publishMods` tasks publish each target jar to Modrinth and CurseForge. Targets are labeled `Fabric` or `NeoForge`. The `NeoForge` target uses Fabric Loader through Connector. Release notes use the root [CHANGELOG.md](CHANGELOG.md). Platform metadata declares dependency relationships. Antique Atlas 4 is client-only. AA4 Atlas has no CurseForge project. Install the [exact AA4 Atlas 1.21 release](https://api.modrinth.com/maven/aR9FhY20/6qNlFux1/aR9FhY20-6qNlFux1.jar).
+The `publishMods` tasks publish each target jar to Modrinth and CurseForge. Targets are labeled `Fabric` or `NeoForge`. The `NeoForge` target uses Fabric Loader through Connector. Release notes use the root [CHANGELOG.md](CHANGELOG.md). Platform metadata declares dependency relationships. Antique Atlas 4 is client-only.
 
 Run this command to publish both targets. It uses a dry run if either token is missing:
 

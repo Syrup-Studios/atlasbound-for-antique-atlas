@@ -15,14 +15,17 @@ import net.minecraft.world.item.component.CustomData;
 
 /** Persistent identity for one antique atlas item. */
 public final class AtlasItemData {
-    private static final ResourceLocation ATLAS_ITEM = ResourceLocation.fromNamespaceAndPath("aa4-atlas", "antique_atlas");
+    private static final ResourceLocation ATLAS_ITEM = ResourceLocation.fromNamespaceAndPath(Atlasbound.MOD_ID, "atlas");
+    private static final ResourceLocation LEGACY_ATLAS_ITEM = ResourceLocation.fromNamespaceAndPath("aa4-atlas", "antique_atlas");
     private static final String ID_KEY = "atlasbound:id";
     private static final Set<UUID> WARNED_PLAYERS = new HashSet<>();
 
     private AtlasItemData() {}
 
     public static boolean isAtlas(ItemStack stack) {
-        return !stack.isEmpty() && BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(ATLAS_ITEM);
+        if (stack.isEmpty()) return false;
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        return id.equals(ATLAS_ITEM) || id.equals(LEGACY_ATLAS_ITEM);
     }
 
     public static boolean canCopyAtlas(ItemStack atlas, ItemStack book) {

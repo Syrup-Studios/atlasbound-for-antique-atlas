@@ -25,7 +25,6 @@
     "minecraft": "${mc}",
     "fabric-api": "*",
     "surveyor": "${surveyor}",
-    "aa4-atlas": "${aa4Atlas}",
     "java": ">=21"
   },
   "recommends": {
