@@ -5,10 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "AtlasItemUseMixin",
-    "CartographyTableMixin",
-    "CartographyTableMixin$AtlasInputSlotMixin",
-    "CartographyTableMixin$BookInputSlotMixin",
-    "CartographyTableMixin$ResultSlotMixin"
+    "CartographyTableMixin"
   ],
   "injectors": {
     "defaultRequire": 1

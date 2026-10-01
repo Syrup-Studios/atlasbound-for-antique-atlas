@@ -254,8 +254,9 @@ public final class AtlasClientState {
                     }
                 });
             }
-            view(summary.dimension()).onTerrainUpdated(summary, visible);
-            view(summary.dimension()).setMarkers(markers.getOrDefault(dimension, Map.of()));
+            AtlasMapView view = view(summary.dimension());
+            view.onTerrainUpdated(summary, visible);
+            view.setMarkers(markers.getOrDefault(dimension, Map.of()));
         }
     }
 }

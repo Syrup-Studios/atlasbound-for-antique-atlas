@@ -48,7 +48,7 @@ public final class AtlasNetworking {
         ServerPlayNetworking.registerGlobalReceiver(AtlasPackets.Open.TYPE,
                 (packet, context) -> open(context.player(), packet.slot()));
         ServerPlayNetworking.registerGlobalReceiver(AtlasPackets.Close.TYPE,
-                (packet, context) -> close(context.player()));
+                (packet, context) -> AtlasManager.close(context.player()));
         ServerPlayNetworking.registerGlobalReceiver(AtlasPackets.MarkerEdit.TYPE,
                 (packet, context) -> editMarker(context.player(), packet));
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> disconnect(handler.player));
@@ -83,10 +83,6 @@ public final class AtlasNetworking {
         if (previous != null && tick - previous < 10) return false;
         LAST_OPEN_TICK.put(player.getUUID(), tick);
         return AtlasManager.open(player, slot);
-    }
-
-    private static void close(ServerPlayer player) {
-        AtlasManager.close(player);
     }
 
     public static void disconnect(ServerPlayer player) {

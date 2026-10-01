@@ -39,12 +39,6 @@ public final class AtlasData extends SavedData {
         return bits != null && bits.get(index);
     }
 
-    public Map<Long, BitSet> regions(ResourceLocation dimension) {
-        Map<Long, BitSet> copy = new HashMap<>();
-        explored.getOrDefault(dimension, Map.of()).forEach((key, bits) -> copy.put(key, (BitSet) bits.clone()));
-        return Map.copyOf(copy);
-    }
-
     public BitSet region(ResourceLocation dimension, long region) {
         BitSet bits = explored.getOrDefault(dimension, Map.of()).get(region);
         return bits == null ? new BitSet(REGION_BITS) : (BitSet) bits.clone();
@@ -144,14 +138,6 @@ public final class AtlasData extends SavedData {
         return Map.copyOf(copy);
     }
 
-    public Map<ResourceLocation, AtlasMarker> markers(ResourceLocation dimension) {
-        return Map.copyOf(markers.getOrDefault(dimension, Map.of()));
-    }
-
-    public AtlasMarker marker(ResourceLocation dimension, ResourceLocation id) {
-        return markers.getOrDefault(dimension, Map.of()).get(id);
-    }
-
     public boolean updateMarker(ResourceLocation dimension, ResourceLocation previousId, AtlasMarker marker) {
         Map<ResourceLocation, AtlasMarker> entries = markers.getOrDefault(dimension, Map.of());
         if (previousId == null) {
@@ -165,14 +151,6 @@ public final class AtlasData extends SavedData {
         if (previousId != null) mutable.remove(previousId);
         if (marker != null) mutable.put(marker.id(), marker);
         if (mutable.isEmpty()) markers.remove(dimension);
-        setDirty();
-        return true;
-    }
-
-    public boolean removeMarker(ResourceLocation dimension, ResourceLocation id) {
-        Map<ResourceLocation, AtlasMarker> entries = markers.get(dimension);
-        if (entries == null || entries.remove(id) == null) return false;
-        if (entries.isEmpty()) markers.remove(dimension);
         setDirty();
         return true;
     }

@@ -23,14 +23,14 @@ fabric:deps:
   "1.21.1":
     fabric_loader: "0.19.3"
     fabric_api: "0.116.15+1.21.1"
-    surveyor: "1.2.3+1.21"
+    surveyor: "1.2.4+1.21"
     antique_atlas: "3.1.2+1.21"
 
 neoforge:deps:
   "1.21.1":
     fabric_loader: "0.19.3"
     fabric_api: "0.116.15+1.21.1"
-    surveyor: "1.2.3+1.21"
+    surveyor: "1.2.4+1.21"
     antique_atlas: "3.1.2+1.21"
 
 loomx.loom_version: "1.17.14"
