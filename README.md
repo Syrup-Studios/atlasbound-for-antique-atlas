@@ -8,9 +8,9 @@ The target is Minecraft 1.21.1. Build and run commands use Java 21.
 
 ## Install
 
-Install Atlasbound, Fabric API, and Surveyor 1.2.3+1.21 on the client and server. Clients also need Antique Atlas 4 3.1.2+1.21 for the map screen. Craft the Atlasbound atlas from one book and one compass. The AA4 Atlas addon is not required.
+Install Atlasbound, Fabric API, and Surveyor on the client and server. Clients also need Antique Atlas 4 for the map screen. Craft the Atlasbound atlas from one book and one compass.
 
-Both targets use Fabric Loader APIs. Fabric runs the jar directly. The NeoForge target makes a Connector-compatible Fabric jar. It is not a native NeoForge build. NeoForge needs Sinytra Connector and Forgified Fabric API. Runtime support with Connector has not been checked in-game.
+Both targets use Fabric Loader APIs. Fabric runs the jar directly. The NeoForge target makes a Connector-compatible Fabric jar. It is not a native NeoForge build. NeoForge needs Sinytra Connector and Forgified Fabric API.
 
 ## Build
 
@@ -19,10 +19,6 @@ Both targets use Fabric Loader APIs. Fabric runs the jar directly. The NeoForge 
 ./gradlew :1.21.1-neoforge:build
 ./gradlew :1.21.1-fabric:buildAndCollect :1.21.1-neoforge:buildAndCollect
 ```
-
-Collected jars go to `build/libs/0.1.0/`. The target name is included in each artifact name. Development run directories are shared under `run/`. For a Fabric client, run `./gradlew :1.21.1-fabric:runClient`. The Gradle client task does not start NeoForge.
-
-To select a Stonecutter target, run `./gradlew "Set active project to 1.21.1-fabric"` or `./gradlew "Set active project to 1.21.1-neoforge"`.
 
 ## Publish
 
@@ -45,7 +41,3 @@ Set `MODRINTH_TOKEN` and `CURSEFORGE_TOKEN` as environment variables or Gradle p
 ## Data and limits
 
 The server records loaded chunks every 20 ticks for valid atlas UUIDs in inventory slots 0-35 and the offhand. The tracking view can include chunks waiting to be sent. Atlasbound does not generate chunks or merge past exploration. Copies with the same UUID share terrain and markers. Structures, automatic landmarks, and Surveyor waypoint imports are not included. See [docs/storage.md](docs/storage.md) for storage details and manual checks.
-
-## License
-
-This project is licensed under the [GNU Lesser General Public License, version 3 or later](LICENSE.md).

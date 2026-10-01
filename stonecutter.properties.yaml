@@ -2,7 +2,7 @@ mod:
   id: "atlasbound"
   name: "Atlasbound"
   group: "net.syrupstudios"
-  version: "0.1.0"
+  version: "0.2.0"
   description: "Adds physical atlases with server-owned, per-atlas exploration."
   authors: "SodaSyrup"
   license: "LGPL-3.0-or-later"
