@@ -20,13 +20,13 @@ Both targets use Fabric Loader APIs. Fabric runs the jar directly. The NeoForge 
 ./gradlew :1.21.1-fabric:buildAndCollect :1.21.1-neoforge:buildAndCollect
 ```
 
-Collected jars go to `build/libs/`. The target name is included in each artifact name. For a Fabric client, run `./gradlew :1.21.1-fabric:runClient`. The Gradle client task does not start NeoForge.
+Collected jars go to `build/libs/0.1.0/`. The target name is included in each artifact name. Development run directories are shared under `run/`. For a Fabric client, run `./gradlew :1.21.1-fabric:runClient`. The Gradle client task does not start NeoForge.
 
-To select a Stonecutter target, run `./gradlew stonecutterSwitchTo1.21.1-fabric` or `./gradlew stonecutterSwitchTo1.21.1-neoforge`.
+To select a Stonecutter target, run `./gradlew "Set active project to 1.21.1-fabric"` or `./gradlew "Set active project to 1.21.1-neoforge"`.
 
 ## Publish
 
-The `publishMods` tasks publish each target jar and sources jar to Modrinth and CurseForge. Targets are labeled `Fabric` or `NeoForge`. The `NeoForge` target uses Fabric Loader through Connector. The release notes list pinned dependency versions. Antique Atlas 4 is client-only. AA4 Atlas has no CurseForge project, so the release notes link its Modrinth project and exact 1.21.1 version.
+The `publishMods` tasks publish each target jar to Modrinth and CurseForge. Targets are labeled `Fabric` or `NeoForge`. The `NeoForge` target uses Fabric Loader through Connector. Release notes use the root [CHANGELOG.md](CHANGELOG.md). Platform metadata declares dependency relationships. Pinned dependency versions and the AA4 Atlas download link are in [docs/dependencies.md](docs/dependencies.md). Antique Atlas 4 is client-only. AA4 Atlas has no CurseForge project. Install the exact release linked in [docs/dependencies.md](docs/dependencies.md).
 
 Run this command to publish both targets. It uses a dry run if either token is missing:
 

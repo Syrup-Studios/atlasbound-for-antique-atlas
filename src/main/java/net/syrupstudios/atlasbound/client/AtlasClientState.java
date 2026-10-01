@@ -101,7 +101,7 @@ public final class AtlasClientState {
         if (atlas == null || client.getConnection() == null) return false;
         if (!ClientPlayNetworking.canSend(AtlasPackets.MarkerEdit.TYPE)) {
             if (client.player != null)
-                client.player.displayClientMessage(Component.literal("Atlasbound needs an updated server to edit markers."), false);
+                client.player.displayClientMessage(Component.translatable("message.atlasbound.server_update_needed"), false);
             return false;
         }
         ClientPlayNetworking.send(new AtlasPackets.MarkerEdit(epoch, dimension, previous, marker));
@@ -176,7 +176,7 @@ public final class AtlasClientState {
         if (slot < 0) return;
         if (!ClientPlayNetworking.canSend(AtlasPackets.Open.TYPE)) {
             Atlasbound.LOGGER.warn("Cannot open atlas: the server does not support Atlasbound networking");
-            client.player.displayClientMessage(Component.literal("Atlasbound needs a compatible server."), false);
+            client.player.displayClientMessage(Component.translatable("message.atlasbound.server_incompatible"), false);
             return;
         }
         pendingOpen = true;
@@ -206,7 +206,7 @@ public final class AtlasClientState {
         if (pendingOpen && client.player != null && client.player.tickCount - pendingSince > 100) {
             pendingOpen = false;
             Atlasbound.LOGGER.debug("Atlas open request timed out at epoch {}", epoch);
-            client.player.displayClientMessage(Component.literal("Atlasbound: the server did not accept this atlas."), false);
+            client.player.displayClientMessage(Component.translatable("message.atlasbound.open_rejected"), false);
         }
         if (screenOpen && !(client.screen instanceof AtlasScreen)) {
             screenOpen = false;

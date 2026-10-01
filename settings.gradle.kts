@@ -1,7 +1,4 @@
 pluginManagement {
-    plugins {
-        id("me.modmuss50.mod-publish-plugin") version "2.2.0"
-    }
     repositories {
         mavenCentral()
         gradlePluginPortal()

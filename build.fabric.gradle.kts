@@ -29,7 +29,11 @@ loom {
     runConfigs.configureEach {
         preferGradleTask = true
         generateRunConfig = true
-        runDirectory = rootProject.file("run/$loader")
+        runDirectory = rootProject.file("run")
+        jvmArguments.add("-Dmixin.debug.export=true")
+    }
+    decompilerOptions.named("vineflower") {
+        options.put("mark-corresponding-synthetics", "1")
     }
 }
 
@@ -42,8 +46,6 @@ java {
 
 tasks.withType<Jar>().configureEach {
     from(rootProject.file("LICENSE.md")) { into("META-INF") }
-    from(rootProject.file("NOTICE.md")) { into("META-INF") }
-    from(rootProject.file("LICENSES")) { into("META-INF/LICENSES") }
 }
 
 tasks.processResources {
@@ -53,19 +55,32 @@ tasks.processResources {
         "modName" to project.property("mod.name"),
         "modDescription" to project.property("mod.description"),
         "license" to project.property("mod.license"),
-        "mc" to project.property("mod.mc_range"),
+        "mc" to project.property("mod.fabric_mc_range"),
         "loader" to project.property("deps.fabric_loader"),
         "surveyor" to project.property("deps.surveyor"),
         "antiqueAtlas" to project.property("deps.antique_atlas"),
         "aa4Atlas" to project.property("deps.aa4_atlas"),
+        "authors" to project.property("mod.authors"),
+        "homepage" to project.property("mod.homepage"),
+        "issues" to project.property("mod.issues"),
+        "sources" to project.property("mod.sources"),
     )
     inputs.properties(values)
     filesMatching("fabric.mod.json") { expand(values) }
 }
 
 tasks.register<Copy>("buildAndCollect") {
-    from(loomx.modJar, loomx.modSourcesJar)
-    into(rootProject.layout.buildDirectory.dir("libs/${project.version}"))
+    group = "build"
+    description = "Builds mod jars and copies results to `build/libs/{mod version}/`"
+    inputs.property("version", project.property("mod.version"))
+    from(loomx.modJar.flatMap { it.archiveFile }, loomx.modSourcesJar.flatMap { it.archiveFile })
+    into(rootProject.layout.buildDirectory.file("libs/${project.property("mod.version")}"))
+    dependsOn("build")
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.encoding = "UTF-8"
+    options.release.set(21)
 }
 
 val modrinthToken = providers.gradleProperty("publish.modrinth_token")
@@ -83,15 +98,9 @@ val publishDryRun = providers.gradleProperty("publish.dry_run").map {
         else -> throw GradleException("publish.dry_run must be true or false")
     }
 }.orElse(!modrinthToken.isPresent || !curseForgeToken.isPresent)
-val loaderName = if (loader == "neoforge") "NeoForge (Connector)" else "Fabric"
 val uploadVersion = "${property("mod.version")}+$minecraftVersion-$loader"
-val requiredDependencies = buildList {
-    add("Surveyor ${property("deps.surveyor")}")
-    add("Antique Atlas 4 ${property("deps.antique_atlas")} (client only)")
-    add("AA4 Atlas ${property("deps.aa4_atlas")} (1.1.2+1.21): https://modrinth.com/mod/aa4-atlas/version/${property("deps.aa4_atlas_artifact")}")
-    if (loader == "fabric") add("Fabric API ${property("deps.fabric_api")}")
-    else add("Sinytra Connector and Forgified Fabric API (NeoForge only)")
-}
+val compatibleVersions = stonecutter.properties.rawOrNull("mod.mc_releases")
+    ?.asList().orEmpty().map { it.toString() }
 
 if (!publishDryRun.get()) {
     if (modrinthId.isBlank() || curseForgeId.isBlank()) {
@@ -106,8 +115,8 @@ publishMods {
     file = loomx.modJar.flatMap { it.archiveFile }
     dryRun.set(publishDryRun)
     version = uploadVersion
-    displayName = "${property("mod.name")} ${property("mod.version")} - ${if (loader == "neoforge") "Neoforge" else "Fabric"} $minecraftVersion"
-    changelog = "${providers.fileContents(rootProject.layout.projectDirectory.file("CHANGELOG.md")).asText.get()}\n\n## Required dependencies for Minecraft $minecraftVersion ($loaderName)\n\n${requiredDependencies.joinToString("\n") { "- $it" }}"
+    displayName = "${property("mod.name")} ${property("mod.version")} - ${if (loader == "neoforge") "NeoForge" else "Fabric"} $minecraftVersion"
+    changelog = providers.fileContents(rootProject.layout.projectDirectory.file("CHANGELOG.md")).asText
     type = when (property("publish.release_type").toString().lowercase()) {
         "stable" -> STABLE
         "beta" -> BETA
@@ -119,7 +128,7 @@ publishMods {
     modrinth {
         projectId = modrinthId.ifBlank { "00000000" }
         accessToken = modrinthToken
-        minecraftVersions.add(minecraftVersion)
+        compatibleVersions.forEach { minecraftVersions.add(it) }
         environment = CLIENT_AND_SERVER
         requires("surveyor")
         requires("antique-atlas-4")
@@ -129,14 +138,11 @@ publishMods {
             requires("connector")
             requires("forgified-fabric-api")
         }
-        additionalFile(tasks.named("sourcesJar")) {
-            type = SOURCES_JAR
-        }
     }
     curseforge {
         projectId = curseForgeId.ifBlank { "0" }
         accessToken = curseForgeToken
-        minecraftVersions.add(minecraftVersion)
+        compatibleVersions.forEach { minecraftVersions.add(it) }
         client = true
         server = true
         requires("surveyor-map-framework")
@@ -145,9 +151,6 @@ publishMods {
         else {
             requires("sinytra-connector")
             requires("forgified-fabric-api")
-        }
-        additionalFile(tasks.named("sourcesJar").get()) {
-            name = "${property("mod.id")}-${uploadVersion}-sources.jar"
         }
     }
 }

@@ -4,6 +4,12 @@
   "version": "${version}",
   "name": "${modName}",
   "description": "${modDescription}",
+  "authors": ["${authors}"],
+  "contact": {
+    "homepage": "${homepage}",
+    "issues": "${issues}",
+    "sources": "${sources}"
+  },
   "license": "${license}",
   "environment": "*",
   "mixins": [

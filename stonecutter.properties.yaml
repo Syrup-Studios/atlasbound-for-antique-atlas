@@ -4,6 +4,7 @@ mod:
   group: "net.syrupstudios"
   version: "0.1.0"
   description: "Adds physical atlases with server-owned, per-atlas exploration."
+  authors: "SodaSyrup"
   license: "LGPL-3.0-or-later"
   homepage: "https://github.com/Syrup-Studios/atlasbound-for-antique-atlas"
   issues: "https://github.com/Syrup-Studios/atlasbound-for-antique-atlas/issues"
@@ -15,7 +16,8 @@ publish:
   release_type: "beta"
 
 "1.21.1":
-  mod.mc_range: "=1.21.1"
+  mod.fabric_mc_range: "1.21.1"
+  mod.mc_releases: ["1.21.1"]
 
 fabric:deps:
   "1.21.1":
