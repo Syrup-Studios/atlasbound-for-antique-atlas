@@ -14,7 +14,7 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-rootProject.name = "atlasbound-for-antique-atlas"
+rootProject.name = "atlasbound"
 
 stonecutter {
     create(rootProject) {
