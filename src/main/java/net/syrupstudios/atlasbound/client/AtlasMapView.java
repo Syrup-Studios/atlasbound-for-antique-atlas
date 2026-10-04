@@ -4,10 +4,14 @@ import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.nio.file.Path;
 
 import com.google.common.collect.Multimap;
 import folk.sisby.antique_atlas.MarkerTexture;
 import folk.sisby.antique_atlas.TileTexture;
+import folk.sisby.antique_atlas.TerrainTileProvider;
+import folk.sisby.antique_atlas.TileElevation;
+import folk.sisby.antique_atlas.reloader.BiomeTileProviders;
 import folk.sisby.antique_atlas.WorldAtlasData;
 import folk.sisby.surveyor.WorldSummary;
 import folk.sisby.surveyor.landmark.Landmark;
@@ -22,10 +26,22 @@ import net.syrupstudios.atlasbound.AtlasMarker;
 public final class AtlasMapView extends WorldAtlasData {
     private final ResourceLocation dimension;
     private final UUID owner;
+    Path cachePath;
+    String cacheFingerprint;
+    Map<ChunkPos, AtlasTileCache.Entry> cacheEntries = Map.of();
+    boolean cacheLoaded;
+    boolean cacheDirty;
 
     AtlasMapView(ResourceLocation dimension, UUID owner) {
         this.dimension = dimension;
         this.owner = owner;
+    }
+
+    ResourceLocation dimensionId() { return dimension; }
+    UUID ownerId() { return owner; }
+    void removeQueuedTiles() {
+        terrainDeque.removeIf(biomeTiles::containsKey);
+        terrainDequeHash.removeAll(biomeTiles.keySet());
     }
 
     @Override
@@ -38,6 +54,42 @@ public final class AtlasMapView extends WorldAtlasData {
             if (!allowed.isEmpty()) visible.put(region, allowed);
         });
         if (!visible.isEmpty()) super.onTerrainUpdated(summary, visible);
+    }
+
+    @Override
+    public void tick(WorldSummary summary) {
+        int size = biomeTiles.size();
+        super.tick(summary);
+        if (biomeTiles.size() != size) cacheDirty = true;
+    }
+
+    void restore(ChunkPos pos, AtlasTileCache.Entry entry) {
+        if (biomeTiles.containsKey(pos)) return;
+        try {
+            TerrainTileProvider provider = BiomeTileProviders.getInstance().getTileProvider(entry.provider());
+            if (!provider.id().equals(entry.provider())) return;
+            TileElevation elevation = null;
+            if (entry.elevation() != null) {
+                for (TileElevation candidate : TileElevation.values())
+                    if (candidate.getName().equals(entry.elevation())) elevation = candidate;
+                if (elevation == null) return;
+            }
+            biomeTiles.put(pos, provider.getTexture(pos, elevation));
+            debugBiomes.put(pos, provider);
+            debugBiomePredicates.put(pos, elevation == null ? null : elevation.getName());
+            tileScope.extendTo(pos.x, pos.z);
+        } catch (RuntimeException ignored) {
+            // Invalid or no longer available cache entries are rebuilt from Surveyor terrain.
+        }
+    }
+
+    Map<ChunkPos, AtlasTileCache.Entry> cacheSnapshot() {
+        Map<ChunkPos, AtlasTileCache.Entry> snapshot = new HashMap<>();
+        debugBiomes.forEach((pos, provider) -> {
+            if (biomeTiles.containsKey(pos) && provider.id().toString().length() <= 256)
+                snapshot.put(pos, new AtlasTileCache.Entry(provider.id(), debugBiomePredicates.get(pos)));
+        });
+        return snapshot;
     }
 
     @Override

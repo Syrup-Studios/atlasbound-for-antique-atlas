@@ -27,6 +27,7 @@ import net.minecraft.world.level.Level;
 import net.syrupstudios.atlasbound.AtlasItemData;
 import net.syrupstudios.atlasbound.AtlasMarker;
 import net.syrupstudios.atlasbound.network.AtlasPackets;
+import net.rasanovum.rosetta.network.RosettaNetwork;
 
 public final class AtlasClientState {
     private static long epoch = -1;
@@ -35,6 +36,8 @@ public final class AtlasClientState {
     private static int pendingSince;
     private static boolean allowScreenOpen;
     private static boolean screenOpen;
+    private static boolean refreshOnReady;
+    private static boolean readyForCache;
     private static final Map<ResourceLocation, Map<Long, BitSet>> regions = new HashMap<>();
     private static final Map<ResourceLocation, Map<ResourceLocation, AtlasMarker>> markers = new HashMap<>();
     private static final Map<ResourceLocation, AtlasMapView> views = new HashMap<>();
@@ -42,11 +45,19 @@ public final class AtlasClientState {
     private AtlasClientState() {}
 
     public static void begin(AtlasPackets.Selection packet) {
-        if (packet.epoch() <= epoch) return;
+        if (packet.epoch() < epoch) return;
+        if (packet.epoch() == epoch) {
+            if (!java.util.Objects.equals(packet.atlas(), atlas)) return;
+            pendingOpen = packet.openScreen() && atlas != null;
+            pendingSince = Minecraft.getInstance().player == null ? 0 : Minecraft.getInstance().player.tickCount;
+            return;
+        }
         closeScreen();
         clearViews();
+        readyForCache = false;
         epoch = packet.epoch();
         atlas = packet.atlas();
+        refreshOnReady = true;
         pendingOpen = packet.openScreen() && atlas != null;
         pendingSince = Minecraft.getInstance().player == null ? 0 : Minecraft.getInstance().player.tickCount;
         regions.clear();
@@ -64,6 +75,7 @@ public final class AtlasClientState {
                 .computeIfAbsent(packet.region(), ignored -> new BitSet(1024));
         atlasBits.or(bits);
         WorldSummary summary = SurveyorClient.tryGetSummary(dimension);
+        if (summary != null) ensureCache(view, dimension.location());
         if (summary == null || summary.terrain() == null) return;
         RegionPos region = RegionPos.of(packet.region());
         BitSet visible = summary.terrain().getRegion(region).bitSet();
@@ -73,7 +85,12 @@ public final class AtlasClientState {
 
     public static void ready(AtlasPackets.Ready packet) {
         if (packet.epoch() != epoch) return;
-        refreshViews();
+        readyForCache = true;
+        if (refreshOnReady) {
+            refreshViews();
+            refreshOnReady = false;
+        }
+        restoreCachedViews();
         if (pendingOpen) {
             pendingOpen = false;
             allowScreenOpen = true;
@@ -104,7 +121,7 @@ public final class AtlasClientState {
                 client.player.displayClientMessage(Component.translatable("message.atlasbound.server_update_needed"), false);
             return false;
         }
-        ClientPlayNetworking.send(new AtlasPackets.MarkerEdit(epoch, dimension, previous, marker));
+        RosettaNetwork.sendToServer(new AtlasPackets.MarkerEdit(epoch, dimension, previous, marker));
         return true;
     }
 
@@ -181,7 +198,7 @@ public final class AtlasClientState {
         }
         pendingOpen = true;
         pendingSince = client.player.tickCount;
-        ClientPlayNetworking.send(new AtlasPackets.Open(slot));
+        RosettaNetwork.sendToServer(new AtlasPackets.Open(slot));
     }
 
     public static boolean hasAtlas(Inventory inventory) { return findAtlasSlot(inventory) >= 0; }
@@ -196,6 +213,12 @@ public final class AtlasClientState {
     }
 
     public static void tick(Minecraft client) {
+        if (atlas != null && client.getConnection() != null) {
+            for (WorldSummary summary : SurveyorClient.getSummaries(client.getConnection()).values()) {
+                AtlasMapView view = views.get(summary.dimension().location());
+                if (view != null) ensureCache(view, summary.dimension().location());
+            }
+        }
         // AA4 builds tiles on world ticks, which stop while its screen pauses the world.
         if (client.isPaused() && client.screen instanceof AtlasScreen && client.getConnection() != null) {
             for (WorldSummary summary : SurveyorClient.getSummaries(client.getConnection()).values()) {
@@ -210,7 +233,8 @@ public final class AtlasClientState {
         }
         if (screenOpen && !(client.screen instanceof AtlasScreen)) {
             screenOpen = false;
-            if (client.getConnection() != null) ClientPlayNetworking.send(new AtlasPackets.Close());
+            views.values().forEach(AtlasTileCache::save);
+            if (client.getConnection() != null) RosettaNetwork.sendToServer(new AtlasPackets.Close());
         }
     }
 
@@ -221,13 +245,52 @@ public final class AtlasClientState {
         atlas = null;
         pendingOpen = false;
         screenOpen = false;
+        refreshOnReady = false;
+        readyForCache = false;
         regions.clear();
         markers.clear();
     }
 
     private static void clearViews() {
+        views.values().forEach(AtlasTileCache::save);
         WorldAtlasData.WORLDS.entrySet().removeIf(entry -> entry.getValue() instanceof AtlasMapView);
         views.clear();
+    }
+
+    private static void ensureCache(AtlasMapView view, ResourceLocation dimension) {
+        if (view.cachePath != null || view.cacheLoaded || view.ownerId() == null) return;
+        AtlasTileCache.load(view, AtlasTileCache.path(Minecraft.getInstance(), dimension, view.ownerId()));
+    }
+
+    static boolean isCurrent(AtlasMapView view) {
+        return views.get(view.dimensionId()) == view;
+    }
+
+    static void restoreCachedViews() {
+        if (!readyForCache) return;
+        for (AtlasMapView view : views.values()) {
+            restoreCached(view);
+        }
+    }
+
+    static void restoreCached(AtlasMapView view) {
+        if (!readyForCache || !view.cacheLoaded) return;
+        view.cacheEntries.forEach((pos, entry) -> {
+            if (allows(view.dimensionId(), pos)) view.restore(pos, entry);
+        });
+        view.cacheEntries = Map.of();
+        view.removeQueuedTiles();
+    }
+
+    static void resourceReloaded() {
+        clearViews();
+        refreshViews();
+        restoreCachedViews();
+    }
+
+    public static void stopping() {
+        views.values().forEach(AtlasTileCache::save);
+        AtlasTileCache.flush();
     }
 
     private static void closeScreen() {
@@ -255,6 +318,7 @@ public final class AtlasClientState {
                 });
             }
             AtlasMapView view = view(summary.dimension());
+            ensureCache(view, dimension);
             view.onTerrainUpdated(summary, visible);
             view.setMarkers(markers.getOrDefault(dimension, Map.of()));
         }

@@ -1,5 +1,6 @@
-# Version 0.2.0
+# Version 0.3.0
 
-- Added the Atlasbound atlas item. It uses the Antique Atlas 4 item model and can be crafted with one book and one compass.
-- Replaced Antique Atlas 4's renamed-book creative entry with the Atlasbound atlas item.
-- Removed the AA4 Atlas addon dependency; craft the Atlasbound atlas instead.
+- Bundled Rosetta 0.1.1 for networking and NBT support.
+- Reopening the same atlas avoids a full sync and rebuild.
+- Rendered tile cache persists per world and server. Cache keys include the atlas UUID and dimension, and permission uses current server exploration data.
+- Resource changes invalidate the rendered tile cache.

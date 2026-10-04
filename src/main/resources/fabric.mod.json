@@ -25,6 +25,7 @@
     "minecraft": "${mc}",
     "fabric-api": "*",
     "surveyor": "${surveyor}",
+    "rosetta_library": ">=${rosetta}",
     "java": ">=21"
   },
   "recommends": {

@@ -9,6 +9,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.rasanovum.rosetta.nbt.NbtCompat;
 
 /** Server-owned exploration data, keyed by atlas identity. */
 public final class AtlasData extends SavedData {
@@ -65,26 +66,28 @@ public final class AtlasData extends SavedData {
     }
 
     private static AtlasData load(CompoundTag root, HolderLookup.Provider registries) {
-        if (!root.contains("schema", CompoundTag.TAG_INT) || (root.getInt("schema") != 1 && root.getInt("schema") != SCHEMA)
-                || !root.contains("dimensions", CompoundTag.TAG_COMPOUND)) {
+        if (!root.contains("schema", CompoundTag.TAG_INT) || !root.contains("dimensions", CompoundTag.TAG_COMPOUND)) {
             throw new IllegalStateException("Invalid Atlasbound saved data root; refusing to replace it");
         }
+        int schema = NbtCompat.getInt(root, "schema", 0);
+        if (schema != 1 && schema != SCHEMA)
+            throw new IllegalStateException("Invalid Atlasbound saved data root; refusing to replace it");
         AtlasData data = new AtlasData();
-        CompoundTag dimensions = root.getCompound("dimensions");
-        for (String dimensionKey : dimensions.getAllKeys()) {
+        CompoundTag dimensions = NbtCompat.getCompound(root, "dimensions");
+        for (String dimensionKey : NbtCompat.getAllKeys(dimensions)) {
             ResourceLocation dimension = ResourceLocation.tryParse(dimensionKey);
             if (dimension == null || !dimensions.contains(dimensionKey, CompoundTag.TAG_COMPOUND))
                 throw new IllegalStateException("Invalid Atlasbound dimension record: " + dimensionKey);
-            CompoundTag regions = dimensions.getCompound(dimensionKey);
+            CompoundTag regions = NbtCompat.getCompound(dimensions, dimensionKey);
             Map<Long, BitSet> validRegions = new HashMap<>();
-            for (String regionKey : regions.getAllKeys()) {
+            for (String regionKey : NbtCompat.getAllKeys(regions)) {
                 try {
                     long region = Long.parseLong(regionKey);
                     if (!Long.toString(region).equals(regionKey))
                         throw new IllegalStateException("Non-canonical Atlasbound region key: " + regionKey);
                     if (!regions.contains(regionKey, CompoundTag.TAG_BYTE_ARRAY))
                         throw new IllegalStateException("Invalid Atlasbound region data: " + regionKey);
-                    byte[] bytes = regions.getByteArray(regionKey);
+                    byte[] bytes = NbtCompat.getByteArray(regions, regionKey);
                     if (bytes.length > REGION_BITS / 8) throw new IllegalStateException("Atlasbound region exceeds 1024 bits: " + regionKey);
                     validRegions.put(region, BitSet.valueOf(bytes));
                 } catch (NumberFormatException ignored) {
@@ -93,22 +96,22 @@ public final class AtlasData extends SavedData {
             }
             if (!validRegions.isEmpty()) data.explored.put(dimension, validRegions);
         }
-        if (root.getInt("schema") == SCHEMA) {
+        if (schema == SCHEMA) {
             if (!root.contains("markers", CompoundTag.TAG_COMPOUND))
                 throw new IllegalStateException("Invalid Atlasbound markers root");
-            CompoundTag markerDimensions = root.getCompound("markers");
+            CompoundTag markerDimensions = NbtCompat.getCompound(root, "markers");
             int markerCount = 0;
-            for (String dimensionKey : markerDimensions.getAllKeys()) {
+            for (String dimensionKey : NbtCompat.getAllKeys(markerDimensions)) {
                 ResourceLocation dimension = ResourceLocation.tryParse(dimensionKey);
                 if (dimension == null || !markerDimensions.contains(dimensionKey, CompoundTag.TAG_COMPOUND))
                     throw new IllegalStateException("Invalid Atlasbound marker dimension: " + dimensionKey);
-                CompoundTag markerTags = markerDimensions.getCompound(dimensionKey);
+                CompoundTag markerTags = NbtCompat.getCompound(markerDimensions, dimensionKey);
                 Map<ResourceLocation, AtlasMarker> entries = new HashMap<>();
-                for (String idKey : markerTags.getAllKeys()) {
+                for (String idKey : NbtCompat.getAllKeys(markerTags)) {
                     ResourceLocation id = ResourceLocation.tryParse(idKey);
                     if (id == null || !markerTags.contains(idKey, CompoundTag.TAG_COMPOUND))
                         throw new IllegalStateException("Invalid Atlasbound marker record: " + idKey);
-                    AtlasMarker marker = AtlasMarker.load(markerTags.getCompound(idKey));
+                    AtlasMarker marker = AtlasMarker.load(NbtCompat.getCompound(markerTags, idKey));
                     if (!marker.id().equals(id) || entries.put(id, marker) != null)
                         throw new IllegalStateException("Mismatched Atlasbound marker id: " + idKey);
                     if (++markerCount > AtlasMarker.MAX_MARKERS)

@@ -8,7 +8,7 @@ The target is Minecraft 1.21.1. Build and run commands use Java 21.
 
 ## Install
 
-Install Atlasbound, Fabric API, and Surveyor on the client and server. Clients also need Antique Atlas 4 for the map screen. Craft the Atlasbound atlas from one book and one compass.
+Install Atlasbound, Fabric API, and Surveyor on the client and server. Atlasbound bundles Rosetta Library. Clients also need Antique Atlas 4 for the map screen. Craft the Atlasbound atlas from one book and one compass.
 
 Both targets use Fabric Loader APIs. Fabric runs the jar directly. The NeoForge target makes a Connector-compatible Fabric jar. It is not a native NeoForge build. NeoForge needs Sinytra Connector and Forgified Fabric API.
 
@@ -41,3 +41,5 @@ Set `MODRINTH_TOKEN` and `CURSEFORGE_TOKEN` as environment variables or Gradle p
 ## Data and limits
 
 The server records loaded chunks every 20 ticks for valid atlas UUIDs in inventory slots 0-35 and the offhand. The tracking view can include chunks waiting to be sent. Atlasbound does not generate chunks or merge past exploration. Copies with the same UUID share terrain and markers. Structures, automatic landmarks, and Surveyor waypoint imports are not included. See [docs/storage.md](docs/storage.md) for storage details and manual checks.
+
+The client saves rendered tile resolutions under `<world>/data/atlasbound/cache/` in singleplayer, or `<game>/data/surveyor/surveyor/<seed>/atlasbound/<server hash>/` in multiplayer. Each atlas UUID and dimension has a separate cache file. A tile restores only after the server confirms that the atlas can show its chunk. Resource or cache format changes cause tiles to rebuild. The cache does not store exploration permissions or marker data.

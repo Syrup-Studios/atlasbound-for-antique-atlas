@@ -9,7 +9,6 @@ import java.util.UUID;
 
 import folk.sisby.surveyor.terrain.WorldTerrain;
 import folk.sisby.surveyor.util.RegionPos;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.registries.Registries;
@@ -18,15 +17,19 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.rasanovum.rosetta.network.RosettaNetwork;
 import net.syrupstudios.atlasbound.AtlasData;
 import net.syrupstudios.atlasbound.AtlasManager;
 import net.syrupstudios.atlasbound.AtlasStorage;
 import net.syrupstudios.atlasbound.Atlasbound;
+import net.syrupstudios.atlasbound.client.AtlasClientPacketHandlers;
 
 /** Fabric play networking and Surveyor synchronization for atlas views. */
 public final class AtlasNetworking {
+    private static final RosettaNetwork.Channel CHANNEL = RosettaNetwork.channel("atlasbound");
     private static final Map<UUID, ClientState> CLIENTS = new HashMap<>();
     private static final Map<UUID, Integer> LAST_OPEN_TICK = new HashMap<>();
     private static final Map<UUID, Long> LAST_MARKER_EDIT_NANOS = new HashMap<>();
@@ -38,19 +41,21 @@ public final class AtlasNetworking {
     public static void initialize() {
         if (initialized) return;
         initialized = true;
-        PayloadTypeRegistry.playC2S().register(AtlasPackets.Open.TYPE, AtlasPackets.Open.CODEC);
-        PayloadTypeRegistry.playC2S().register(AtlasPackets.Close.TYPE, AtlasPackets.Close.CODEC);
-        PayloadTypeRegistry.playC2S().register(AtlasPackets.MarkerEdit.TYPE, AtlasPackets.MarkerEdit.CODEC);
-        PayloadTypeRegistry.playS2C().register(AtlasPackets.Selection.TYPE, AtlasPackets.Selection.CODEC);
-        PayloadTypeRegistry.playS2C().register(AtlasPackets.Region.TYPE, AtlasPackets.Region.CODEC);
-        PayloadTypeRegistry.playS2C().register(AtlasPackets.Ready.TYPE, AtlasPackets.Ready.CODEC);
-        PayloadTypeRegistry.playS2C().register(AtlasPackets.Marker.TYPE, AtlasPackets.Marker.CODEC);
-        ServerPlayNetworking.registerGlobalReceiver(AtlasPackets.Open.TYPE,
-                (packet, context) -> open(context.player(), packet.slot()));
-        ServerPlayNetworking.registerGlobalReceiver(AtlasPackets.Close.TYPE,
-                (packet, context) -> AtlasManager.close(context.player()));
-        ServerPlayNetworking.registerGlobalReceiver(AtlasPackets.MarkerEdit.TYPE,
-                (packet, context) -> editMarker(context.player(), packet));
+        CHANNEL.serverbound("open", AtlasPackets.Open.class, AtlasPackets.Open::write, AtlasPackets.Open::new,
+                (packet, level, player) -> openPacket(packet, player));
+        CHANNEL.serverbound("close", AtlasPackets.Close.class, AtlasPackets.Close::write, AtlasPackets.Close::new,
+                (packet, level, player) -> closePacket(player));
+        CHANNEL.serverbound("marker_edit", AtlasPackets.MarkerEdit.class,
+                AtlasPackets.MarkerEdit::write, AtlasPackets.MarkerEdit::new,
+                (packet, level, player) -> markerEditPacket(packet, player));
+        CHANNEL.clientbound("selection", AtlasPackets.Selection.class,
+                AtlasPackets.Selection::write, AtlasPackets.Selection::new, AtlasClientPacketHandlers::selection);
+        CHANNEL.clientbound("region", AtlasPackets.Region.class,
+                AtlasPackets.Region::write, AtlasPackets.Region::new, AtlasClientPacketHandlers::region);
+        CHANNEL.clientbound("ready", AtlasPackets.Ready.class,
+                AtlasPackets.Ready::write, AtlasPackets.Ready::new, AtlasClientPacketHandlers::ready);
+        CHANNEL.clientbound("marker", AtlasPackets.Marker.class,
+                AtlasPackets.Marker::write, AtlasPackets.Marker::new, AtlasClientPacketHandlers::marker);
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> disconnect(handler.player));
         AtlasManager.setTransport(new AtlasManager.Transport() {
             @Override
@@ -69,7 +74,8 @@ public final class AtlasNetworking {
             public void regionChanged(ServerPlayer player, UUID atlasId, ResourceLocation dimension, long region, BitSet bits) {
                 ClientState state = CLIENTS.get(player.getUUID());
                 if (state == null || !atlasId.equals(state.atlas) || !canSend(player)) return;
-                ServerPlayNetworking.send(player, new AtlasPackets.Region(state.epoch, dimension, region, bits.toLongArray()));
+                RosettaNetwork.sendToPlayer(
+                        new AtlasPackets.Region(state.epoch, dimension, region, bits.toLongArray()), player);
                 queueSurveyor(player, dimension, region, bits);
             }
         });
@@ -103,23 +109,28 @@ public final class AtlasNetworking {
     private static void sendSelection(ServerPlayer player, UUID atlas, AtlasData data, boolean openScreen) {
         if (!canSend(player)) return;
         ClientState state = CLIENTS.computeIfAbsent(player.getUUID(), ignored -> new ClientState());
+        if (atlas != null && atlas.equals(state.atlas)) {
+            RosettaNetwork.sendToPlayer(new AtlasPackets.Selection(state.epoch, atlas, openScreen), player);
+            RosettaNetwork.sendToPlayer(new AtlasPackets.Ready(state.epoch), player);
+            return;
+        }
         state.epoch++;
         state.atlas = atlas;
-        ServerPlayNetworking.send(player, new AtlasPackets.Selection(state.epoch, atlas, openScreen));
+        RosettaNetwork.sendToPlayer(new AtlasPackets.Selection(state.epoch, atlas, openScreen), player);
         if (atlas != null && data != null) {
             // Snapshot transfer size grows with the atlas's explored regions.
             data.dimensions().forEach((dimension, regions) -> {
                 regions.forEach((region, bits) -> {
-                    ServerPlayNetworking.send(player,
-                            new AtlasPackets.Region(state.epoch, dimension, region, bits.toLongArray()));
+                    RosettaNetwork.sendToPlayer(
+                            new AtlasPackets.Region(state.epoch, dimension, region, bits.toLongArray()), player);
                     queueSurveyor(player, dimension, region, bits);
                 });
             });
             if (ServerPlayNetworking.canSend(player, AtlasPackets.Marker.TYPE))
                 data.markers().forEach((dimension, markers) -> markers.values().forEach(marker ->
-                        ServerPlayNetworking.send(player, new AtlasPackets.Marker(state.epoch, dimension, null, marker))));
+                        RosettaNetwork.sendToPlayer(new AtlasPackets.Marker(state.epoch, dimension, null, marker), player)));
         }
-        ServerPlayNetworking.send(player, new AtlasPackets.Ready(state.epoch));
+        RosettaNetwork.sendToPlayer(new AtlasPackets.Ready(state.epoch), player);
     }
 
     private static void queueSurveyor(ServerPlayer player, ResourceLocation dimension, long region, BitSet explored) {
@@ -144,6 +155,18 @@ public final class AtlasNetworking {
         return ServerPlayNetworking.canSend(player, AtlasPackets.Selection.TYPE)
                 && ServerPlayNetworking.canSend(player, AtlasPackets.Region.TYPE)
                 && ServerPlayNetworking.canSend(player, AtlasPackets.Ready.TYPE);
+    }
+
+    private static void openPacket(AtlasPackets.Open packet, Player player) {
+        if (player instanceof ServerPlayer serverPlayer) open(serverPlayer, packet.slot());
+    }
+
+    private static void closePacket(Player player) {
+        if (player instanceof ServerPlayer serverPlayer) AtlasManager.close(serverPlayer);
+    }
+
+    private static void markerEditPacket(AtlasPackets.MarkerEdit packet, Player player) {
+        if (player instanceof ServerPlayer serverPlayer) editMarker(serverPlayer, packet);
     }
 
     private static void editMarker(ServerPlayer player, AtlasPackets.MarkerEdit packet) {
@@ -177,8 +200,8 @@ public final class AtlasNetworking {
             ClientState viewerState = CLIENTS.get(viewer.getUUID());
             if (viewerState != null && atlas.equals(viewerState.atlas) && canSend(viewer)
                     && ServerPlayNetworking.canSend(viewer, AtlasPackets.Marker.TYPE))
-                ServerPlayNetworking.send(viewer, new AtlasPackets.Marker(viewerState.epoch,
-                        packet.dimension(), packet.previous(), packet.marker()));
+                RosettaNetwork.sendToPlayer(new AtlasPackets.Marker(viewerState.epoch,
+                        packet.dimension(), packet.previous(), packet.marker()), viewer);
         }
     }
 
