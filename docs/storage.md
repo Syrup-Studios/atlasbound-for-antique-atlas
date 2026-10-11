@@ -24,7 +24,7 @@ The server checks that a marker edit comes from a player who has the selected ph
 
 The client uses AA4's native icon palette. Atlasbound does not copy AA4 assets or code. Add a marker from the toolbar, then click the map to place it. The toolbar's current-player action uses AA4's Shift behavior. Right-click an existing marker to edit it. Use the delete toolbar action, then click a marker to delete it. Atlasbound hides atlas renderings for held stacks that are not selected.
 
-Player-position overlays remain shared. Structures and automatically generated global landmarks remain disabled. This feature covers user-created custom markers only. It does not add global Surveyor waypoints or waypoint imports.
+Player-position overlays remain shared. Antique Atlas structure tiles appear in recorded chunks for recorded structure starts. Automatic structure markers appear only when both the start chunk and marker location are explored by the selected atlas. Surveyor structure data must be available on the client. Other automatically generated global landmarks remain disabled. User-created custom markers remain editable and are not restricted by the explored mask. Atlasbound does not add global Surveyor waypoints or waypoint imports.
 
 ## Manual checks
 

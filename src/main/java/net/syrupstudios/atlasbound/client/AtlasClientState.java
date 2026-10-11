@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
 import folk.sisby.antique_atlas.AntiqueAtlas;
 import folk.sisby.antique_atlas.WorldAtlasData;
 import folk.sisby.antique_atlas.gui.AtlasScreen;
@@ -20,6 +22,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
@@ -73,10 +76,14 @@ public final class AtlasClientState {
         AtlasMapView view = view(dimension);
         BitSet atlasBits = regions.computeIfAbsent(packet.dimension(), ignored -> new HashMap<>())
                 .computeIfAbsent(packet.region(), ignored -> new BitSet(1024));
+        BitSet newlyAllowed = (BitSet) bits.clone();
+        newlyAllowed.andNot(atlasBits);
         atlasBits.or(bits);
         WorldSummary summary = SurveyorClient.tryGetSummary(dimension);
         if (summary != null) ensureCache(view, dimension.location());
-        if (summary == null || summary.terrain() == null) return;
+        if (summary == null) return;
+        if (readyForCache && !newlyAllowed.isEmpty()) refreshStructures(view, summary, packet.region());
+        if (summary.terrain() == null) return;
         RegionPos region = RegionPos.of(packet.region());
         BitSet visible = summary.terrain().getRegion(region).bitSet();
         visible.and(atlasBits);
@@ -320,7 +327,26 @@ public final class AtlasClientState {
             AtlasMapView view = view(summary.dimension());
             ensureCache(view, dimension);
             view.onTerrainUpdated(summary, visible);
+            refreshStructures(view, summary);
             view.setMarkers(markers.getOrDefault(dimension, Map.of()));
         }
+    }
+
+    private static void refreshStructures(AtlasMapView view, WorldSummary summary) {
+        refreshStructures(view, summary, null);
+    }
+
+    private static void refreshStructures(AtlasMapView view, WorldSummary summary, Long region) {
+        if (summary.structures() == null) return;
+        var starts = summary.structures().keySet(null);
+        if (region == null) {
+            view.onStructuresAdded(summary, starts);
+            return;
+        }
+        Multimap<ResourceKey<Structure>, ChunkPos> changed = HashMultimap.create();
+        starts.forEach((key, pos) -> {
+            if (ChunkPos.asLong(pos.x >> 5, pos.z >> 5) == region) changed.put(key, pos);
+        });
+        if (!changed.isEmpty()) view.onStructuresAdded(summary, changed);
     }
 }

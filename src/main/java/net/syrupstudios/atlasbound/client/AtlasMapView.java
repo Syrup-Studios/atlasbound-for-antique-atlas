@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.nio.file.Path;
 
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import folk.sisby.antique_atlas.MarkerTexture;
 import folk.sisby.antique_atlas.TileTexture;
@@ -15,6 +16,8 @@ import folk.sisby.antique_atlas.reloader.BiomeTileProviders;
 import folk.sisby.antique_atlas.WorldAtlasData;
 import folk.sisby.surveyor.WorldSummary;
 import folk.sisby.surveyor.landmark.Landmark;
+import folk.sisby.surveyor.landmark.WorldLandmarks;
+import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
 import folk.sisby.surveyor.util.RegionPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -93,7 +96,14 @@ public final class AtlasMapView extends WorldAtlasData {
     }
 
     @Override
-    public void onStructuresAdded(WorldSummary summary, Multimap<ResourceKey<Structure>, ChunkPos> starts) {}
+    public void onStructuresAdded(WorldSummary summary, Multimap<ResourceKey<Structure>, ChunkPos> starts) {
+        if (!AtlasClientState.owns(owner)) return;
+        Multimap<ResourceKey<Structure>, ChunkPos> visible = HashMultimap.create();
+        starts.forEach((structure, pos) -> {
+            if (AtlasClientState.allows(dimension, pos)) visible.put(structure, pos);
+        });
+        if (!visible.isEmpty()) super.onStructuresAdded(summary, visible);
+    }
 
     @Override public void onLandmarksAdded(WorldSummary summary, Multimap<java.util.UUID, ResourceLocation> landmarks) {}
     @Override public void onLandmarksRemoved(WorldSummary summary, Multimap<java.util.UUID, ResourceLocation> landmarks) {}
@@ -120,7 +130,14 @@ public final class AtlasMapView extends WorldAtlasData {
     }
 
     @Override public Map<Landmark, MarkerTexture> getAllMarkers(int tileChunks) {
-        return AtlasClientState.owns(owner) ? super.getAllMarkers(tileChunks) : Map.of();
+        if (!AtlasClientState.owns(owner)) return Map.of();
+        Map<Landmark, MarkerTexture> visible = new HashMap<>(super.getAllMarkers(tileChunks));
+        structureMarkers.keySet().forEach(marker -> {
+            if (!marker.owner().equals(WorldLandmarks.GLOBAL)) return;
+            var pos = marker.get(LandmarkComponentTypes.POS);
+            if (pos == null || !AtlasClientState.allows(dimension, new ChunkPos(pos))) visible.remove(marker);
+        });
+        return visible;
     }
 
     @Override
