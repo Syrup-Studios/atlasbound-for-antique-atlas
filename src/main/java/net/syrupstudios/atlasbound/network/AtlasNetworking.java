@@ -11,15 +11,23 @@ import folk.sisby.surveyor.terrain.WorldTerrain;
 import folk.sisby.surveyor.util.RegionPos;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.rasanovum.rosetta.network.RosettaNetwork;
 import net.syrupstudios.atlasbound.AtlasData;
 import net.syrupstudios.atlasbound.AtlasManager;
@@ -32,6 +40,7 @@ public final class AtlasNetworking {
     private static final RosettaNetwork.Channel CHANNEL = RosettaNetwork.channel("atlasbound");
     private static final Map<UUID, ClientState> CLIENTS = new HashMap<>();
     private static final Map<UUID, Integer> LAST_OPEN_TICK = new HashMap<>();
+    private static final Map<UUID, Long> LAST_TELEPORT_NANOS = new HashMap<>();
     private static final Map<UUID, Long> LAST_MARKER_EDIT_NANOS = new HashMap<>();
     private static final Set<String> WARNED_TERRAIN = new HashSet<>();
     private static boolean initialized;
@@ -48,6 +57,9 @@ public final class AtlasNetworking {
         CHANNEL.serverbound("marker_edit", AtlasPackets.MarkerEdit.class,
                 AtlasPackets.MarkerEdit::write, AtlasPackets.MarkerEdit::new,
                 (packet, level, player) -> markerEditPacket(packet, player));
+        CHANNEL.serverbound("teleport", AtlasPackets.Teleport.class,
+                AtlasPackets.Teleport::write, AtlasPackets.Teleport::new,
+                (packet, level, player) -> teleportPacket(packet, player));
         CHANNEL.clientbound("selection", AtlasPackets.Selection.class,
                 AtlasPackets.Selection::write, AtlasPackets.Selection::new, AtlasClientPacketHandlers::selection);
         CHANNEL.clientbound("region", AtlasPackets.Region.class,
@@ -95,12 +107,14 @@ public final class AtlasNetworking {
         AtlasManager.removePlayer(player);
         CLIENTS.remove(player.getUUID());
         LAST_OPEN_TICK.remove(player.getUUID());
+        LAST_TELEPORT_NANOS.remove(player.getUUID());
         LAST_MARKER_EDIT_NANOS.remove(player.getUUID());
     }
 
     public static void serverStopped(MinecraftServer server) {
         CLIENTS.clear();
         LAST_OPEN_TICK.clear();
+        LAST_TELEPORT_NANOS.clear();
         LAST_MARKER_EDIT_NANOS.clear();
         WARNED_TERRAIN.clear();
         AtlasManager.serverStopped(server);
@@ -167,6 +181,64 @@ public final class AtlasNetworking {
 
     private static void markerEditPacket(AtlasPackets.MarkerEdit packet, Player player) {
         if (player instanceof ServerPlayer serverPlayer) editMarker(serverPlayer, packet);
+    }
+
+    private static void teleportPacket(AtlasPackets.Teleport packet, Player player) {
+        if (!(player instanceof ServerPlayer serverPlayer)) return;
+        ClientState state = CLIENTS.get(serverPlayer.getUUID());
+        if (state == null || state.epoch != packet.epoch() || state.atlas == null
+                || !state.atlas.equals(AtlasManager.editingAtlas(serverPlayer))) return;
+        var teleport = serverPlayer.getServer().getCommands().getDispatcher().getRoot().getChild("teleport");
+        if (teleport == null || !teleport.canUse(serverPlayer.createCommandSourceStack())) {
+            serverPlayer.displayClientMessage(Component.translatable("message.atlasbound.teleport_denied"), false);
+            return;
+        }
+
+        long now = System.nanoTime();
+        Long previous = LAST_TELEPORT_NANOS.get(serverPlayer.getUUID());
+        if (previous != null && now - previous < 500_000_000L) return;
+        LAST_TELEPORT_NANOS.put(serverPlayer.getUUID(), now);
+
+        ServerLevel level = serverPlayer.getServer().getLevel(
+                ResourceKey.create(Registries.DIMENSION, packet.dimension()));
+        BlockPos requested = new BlockPos(packet.x(), 0, packet.z());
+        if (level == null || !Level.isInSpawnableBounds(requested)
+                || !level.getWorldBorder().isWithinBounds(new Vec3(packet.x() + 0.5, 0, packet.z() + 0.5))) {
+            serverPlayer.displayClientMessage(Component.translatable("message.atlasbound.teleport_unsafe"), false);
+            return;
+        }
+
+        LevelChunk chunk = level.getChunk(packet.x() >> 4, packet.z() >> 4);
+        int y = chunk.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, packet.x() & 15, packet.z() & 15) + 1;
+        if (!safeLanding(serverPlayer, level, packet.x(), y, packet.z())) {
+            serverPlayer.displayClientMessage(Component.translatable("message.atlasbound.teleport_unsafe"), false);
+            return;
+        }
+        serverPlayer.teleportTo(level, packet.x() + 0.5, y, packet.z() + 0.5,
+                Set.of(), serverPlayer.getYRot(), serverPlayer.getXRot());
+    }
+
+    private static boolean safeLanding(ServerPlayer player, ServerLevel level, int x, int y, int z) {
+        int logicalMax = level.getMinBuildHeight() + level.dimensionType().logicalHeight();
+        if (y <= level.getMinBuildHeight() || y + 1 >= level.getMaxBuildHeight() || y + 1 >= logicalMax) return false;
+        BlockPos feet = new BlockPos(x, y, z);
+        BlockPos head = feet.above();
+        BlockPos floor = feet.below();
+        BlockState floorState = level.getBlockState(floor);
+        BlockState feetState = level.getBlockState(feet);
+        BlockState headState = level.getBlockState(head);
+        if (!floorState.isFaceSturdy(level, floor, Direction.UP)
+                || !floorState.getFluidState().isEmpty()
+                || !feetState.getFluidState().isEmpty()
+                || !headState.getFluidState().isEmpty()
+                || player.getType().isBlockDangerous(floorState)
+                || player.getType().isBlockDangerous(feetState)
+                || player.getType().isBlockDangerous(headState)) return false;
+        double dx = x + 0.5 - player.getX();
+        double dy = y - player.getY();
+        double dz = z + 0.5 - player.getZ();
+        AABB destination = player.getBoundingBox().move(dx, dy, dz);
+        return level.noCollision(player, destination);
     }
 
     private static void editMarker(ServerPlayer player, AtlasPackets.MarkerEdit packet) {

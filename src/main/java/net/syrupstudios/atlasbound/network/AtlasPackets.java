@@ -78,6 +78,19 @@ public final class AtlasPackets {
         public MarkerEdit { requireMarkerChange(previous, marker); }
     }
 
+    public record Teleport(long epoch, ResourceLocation dimension, int x, int z) implements RosettaPacket {
+        public static final CustomPacketPayload.Type<Teleport> TYPE = AtlasPackets.type("teleport");
+        public Teleport(FriendlyByteBuf buf) {
+            this(buf.readVarLong(), buf.readResourceLocation(), buf.readInt(), buf.readInt());
+        }
+        public void write(FriendlyByteBuf buf) {
+            buf.writeVarLong(epoch);
+            buf.writeResourceLocation(dimension);
+            buf.writeInt(x);
+            buf.writeInt(z);
+        }
+    }
+
     public record Marker(long epoch, ResourceLocation dimension, ResourceLocation removed, AtlasMarker marker)
             implements RosettaPacket {
         public static final CustomPacketPayload.Type<Marker> TYPE = AtlasPackets.type("marker");

@@ -132,6 +132,17 @@ public final class AtlasClientState {
         return true;
     }
 
+    public static void teleport(ResourceLocation dimension, int x, int z) {
+        Minecraft client = Minecraft.getInstance();
+        if (atlas == null || client.getConnection() == null) return;
+        if (!ClientPlayNetworking.canSend(AtlasPackets.Teleport.TYPE)) {
+            if (client.player != null)
+                client.player.displayClientMessage(Component.translatable("message.atlasbound.server_update_needed"), false);
+            return;
+        }
+        RosettaNetwork.sendToServer(new AtlasPackets.Teleport(epoch, dimension, x, z));
+    }
+
     static AtlasMarker marker(ResourceLocation dimension, ResourceLocation id) {
         return markers.getOrDefault(dimension, Map.of()).get(id);
     }

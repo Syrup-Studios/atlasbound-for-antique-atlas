@@ -1,4 +1,5 @@
-# Version 0.3.1
+# Version 0.3.2
 
-- Show Antique Atlas structure tiles in recorded chunks when Surveyor structure data is available.
+- Teleport to a location in the selected map dimension with Ctrl+left-click when permitted to use `/teleport`. The server checks permission and selects a safe surface destination within world limits.
+- Older clients can still connect, but they must update to use map teleport.
 
