@@ -2,7 +2,7 @@ mod:
   id: "atlasbound"
   name: "Atlasbound"
   group: "net.syrupstudios"
-  version: "0.3.2"
+  version: "0.3.3"
   description: "Adds physical atlases with server-owned, per-atlas exploration."
   authors: "SodaSyrup"
   license: "LGPL-3.0-or-later"
@@ -25,6 +25,8 @@ fabric:deps:
     fabric_api: "0.116.15+1.21.1"
     surveyor: "1.2.4+1.21"
     antique_atlas: "3.1.2+1.21"
+    trinkets: "3.10.0"
+    curios: "9.5.1+1.21.1"
     rosetta: "0.1.1"
 
 neoforge:deps:
@@ -33,6 +35,8 @@ neoforge:deps:
     fabric_api: "0.116.15+1.21.1"
     surveyor: "1.2.4+1.21"
     antique_atlas: "3.1.2+1.21"
+    trinkets: "3.10.0"
+    curios: "9.5.1+1.21.1"
     rosetta: "0.1.1"
 
 loomx.loom_version: "1.17.14"

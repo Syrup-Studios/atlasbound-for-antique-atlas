@@ -20,7 +20,7 @@ public final class AtlasboundClient implements ClientModInitializer {
         AtlasTileCache.register();
         ClientTickEvents.START_CLIENT_TICK.register(client -> {
             // The add-on checks exact default-stack components. Atlas UUID data changes that equality.
-            if (client.screen == null && client.player != null && AtlasClientState.hasAtlas(client.player.getInventory()))
+            if (client.screen == null && client.player != null && AtlasClientState.hasAtlas(client.player))
                 while (AntiqueAtlasKeybindings.ATLAS_KEYMAPPING.consumeClick()) AtlasClientState.requestOpen();
         });
         ClientTickEvents.END_CLIENT_TICK.register(AtlasClientState::tick);

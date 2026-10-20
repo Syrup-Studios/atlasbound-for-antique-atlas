@@ -16,6 +16,8 @@ import folk.sisby.surveyor.landmark.Landmark;
 import folk.sisby.surveyor.landmark.component.LandmarkComponentTypes;
 import folk.sisby.surveyor.util.RegionPos;
 import net.syrupstudios.atlasbound.Atlasbound;
+import net.syrupstudios.atlasbound.AtlasEquipment;
+import net.syrupstudios.atlasbound.AtlasManager;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.Registries;
@@ -24,6 +26,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -207,7 +210,7 @@ public final class AtlasClientState {
     public static void requestOpen() {
         Minecraft client = Minecraft.getInstance();
         if (pendingOpen || client.player == null || client.getConnection() == null) return;
-        int slot = findAtlasSlot(client.player.getInventory());
+        int slot = findAtlasSlot(client.player);
         if (slot < 0) return;
         if (!ClientPlayNetworking.canSend(AtlasPackets.Open.TYPE)) {
             Atlasbound.LOGGER.warn("Cannot open atlas: the server does not support Atlasbound networking");
@@ -219,10 +222,12 @@ public final class AtlasClientState {
         RosettaNetwork.sendToServer(new AtlasPackets.Open(slot));
     }
 
-    public static boolean hasAtlas(Inventory inventory) { return findAtlasSlot(inventory) >= 0; }
+    public static boolean hasAtlas(Player player) { return findAtlasSlot(player) >= 0; }
 
-    private static int findAtlasSlot(Inventory inventory) {
+    private static int findAtlasSlot(Player player) {
+        Inventory inventory = player.getInventory();
         int selected = inventory.selected;
+        if (AtlasItemData.isAtlas(AtlasEquipment.getAtlas(player))) return AtlasManager.EQUIPPED_SLOT;
         if (AtlasItemData.isAtlas(inventory.getSelected())) return selected;
         if (AtlasItemData.isAtlas(inventory.offhand.get(0))) return 40;
         for (int i = 0; i < inventory.items.size(); i++)

@@ -17,6 +17,7 @@ import net.minecraft.world.level.ChunkPos;
 
 /** Tracks active atlas selection and records loaded player-tracked chunks for carried atlases. */
 public final class AtlasManager {
+    public static final int EQUIPPED_SLOT = 41;
     private static final Map<UUID, View> VIEWS = new HashMap<>();
     private static Transport transport = new Transport() {};
 
@@ -26,9 +27,9 @@ public final class AtlasManager {
         transport = callback == null ? new Transport() {} : callback;
     }
 
-    /** Slot indexes 0-35 are player inventory slots; 40 is offhand. */
+    /** Slot indexes 0-35 are player inventory slots; 40 is offhand; 41 is an equipped atlas slot. */
     public static boolean open(ServerPlayer player, int inventorySlot) {
-        ItemStack stack = slot(player.getInventory(), inventorySlot);
+        ItemStack stack = inventorySlot == EQUIPPED_SLOT ? AtlasEquipment.getAtlas(player) : slot(player.getInventory(), inventorySlot);
         if (stack == null || !AtlasItemData.isAtlas(stack)) return false;
         UUID id = AtlasItemData.ensureId(player, stack).orElse(null);
         if (id == null) return false;
@@ -95,7 +96,7 @@ public final class AtlasManager {
         Atlasbound.LOGGER.debug("Cleared atlas selection for disconnected player {}", player.getGameProfile().getName());
     }
 
-    /** Returns the open, held, or first inventory atlas identity. */
+    /** Returns the open, held, equipped, or first inventory atlas identity. */
     public static UUID selected(ServerPlayer player) {
         return refreshSelection(player);
     }
@@ -142,6 +143,7 @@ public final class AtlasManager {
         Inventory inventory = player.getInventory();
         for (ItemStack stack : inventory.items) initialize(player, stack);
         initialize(player, inventory.offhand.get(0));
+        initialize(player, AtlasEquipment.getAtlas(player));
     }
 
     private static void initialize(ServerPlayer player, ItemStack stack) {
@@ -160,6 +162,7 @@ public final class AtlasManager {
         Inventory inventory = player.getInventory();
         for (ItemStack stack : inventory.items) addRecordingAtlas(player, server, stack, atlases);
         addRecordingAtlas(player, server, inventory.offhand.get(0), atlases);
+        addRecordingAtlas(player, server, AtlasEquipment.getAtlas(player), atlases);
         return atlases;
     }
 
@@ -186,6 +189,8 @@ public final class AtlasManager {
         if (view != null && view.open && possesses(player, view.id)) return view.id;
         UUID held = preferredHeldId(player);
         if (held != null) return held;
+        UUID equipped = AtlasItemData.ensureId(player, AtlasEquipment.getAtlas(player)).orElse(null);
+        if (equipped != null) return equipped;
         for (ItemStack stack : player.getInventory().items) {
             UUID id = AtlasItemData.ensureId(player, stack).orElse(null);
             if (id != null) return id;
@@ -198,7 +203,8 @@ public final class AtlasManager {
         for (ItemStack stack : inventory.items) {
             if (AtlasItemData.id(stack).filter(expected::equals).isPresent()) return true;
         }
-        return AtlasItemData.id(player.getOffhandItem()).filter(expected::equals).isPresent();
+        if (AtlasItemData.id(player.getOffhandItem()).filter(expected::equals).isPresent()) return true;
+        return AtlasItemData.id(AtlasEquipment.getAtlas(player)).filter(expected::equals).isPresent();
     }
 
     private static ItemStack slot(Inventory inventory, int index) {

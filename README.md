@@ -12,6 +12,8 @@ Install Atlasbound, Fabric API, and Surveyor on the client and server. Atlasboun
 
 Both targets use Fabric Loader APIs. Fabric runs the jar directly. The NeoForge target makes a Connector-compatible Fabric jar. It is not a native NeoForge build. NeoForge needs Sinytra Connector and Forgified Fabric API.
 
+Trinkets 3.10.0 and Curios 9.5.1 for Minecraft 1.21.1 are optional. Install the accessory mod on the client and server, then equip an Atlasbound atlas in its atlas slot. The atlas records exploration and can be opened with the atlas key, which prefers the equipped atlas over atlases in the hands or inventory. Curios 9.5.1 has been confirmed working on NeoForge 21.1.259 with Connector 2.0.0-beta.17+1.21.1. Trinkets and other Connector versions have not been checked.
+
 ## Build
 
 ```sh
@@ -40,7 +42,7 @@ Set `MODRINTH_TOKEN` and `CURSEFORGE_TOKEN` as environment variables or Gradle p
 
 ## Data and limits
 
-The server records loaded chunks every 20 ticks for valid atlas UUIDs in inventory slots 0-35 and the offhand. The tracking view can include chunks waiting to be sent. Atlasbound does not generate chunks for exploration tracking or merge past exploration. Copies with the same UUID share terrain and markers. Antique Atlas structure tiles appear in recorded chunks for recorded structure starts. Automatic structure markers appear only when both the start chunk and marker location are recorded. Surveyor structure data must be available. Automatic Surveyor landmarks and waypoint imports are not included. See [docs/storage.md](docs/storage.md) for storage details and manual checks.
+The server records loaded chunks every 20 ticks for valid atlas UUIDs in inventory slots 0-35, the offhand, and an optional Trinkets or Curios atlas slot. The tracking view can include chunks waiting to be sent. Atlasbound does not generate chunks for exploration tracking or merge past exploration. Copies with the same UUID share terrain and markers. Antique Atlas structure tiles appear in recorded chunks for recorded structure starts. Automatic structure markers appear only when both the start chunk and marker location are recorded. Surveyor structure data must be available. Automatic Surveyor landmarks and waypoint imports are not included. See [docs/storage.md](docs/storage.md) for storage details and manual checks.
 
 Players with permission to use `/teleport` can hold Ctrl and left-click a map location to teleport there in the selected map dimension. The server chooses a safe surface landing spot, rejects the Nether roof, and checks world bounds and the world border. The server can generate the destination chunk if needed.
 

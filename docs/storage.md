@@ -12,7 +12,9 @@ The `markers` compound is keyed by dimension, then marker ID. Each marker record
 
 ## Exploration rules
 
-Every 20 server ticks, the server scans each online player's current server tracking view. It records each chunk that is already loaded for each distinct valid atlas UUID in inventory slots 0-35 and the offhand. The tracking view can include chunks waiting to be sent. Atlasbound does not generate chunks or merge past exploration. Copies with the same UUID share one dataset. Invalid UUIDs and corrupt saves disable only that atlas UUID. Atlas screen, hand, and inventory selection controls the displayed atlas only. While the atlas screen is open, that atlas stays selected while the player still has it. Otherwise, selection priority is main hand, offhand, then the first atlas in inventory slots 0-35.
+Every 20 server ticks, the server scans each online player's current server tracking view. It records each chunk that is already loaded for each distinct valid atlas UUID in inventory slots 0-35, the offhand, and an equipped Trinkets or Curios atlas. The tracking view can include chunks waiting to be sent. Atlasbound does not generate chunks or merge past exploration. Copies with the same UUID share one dataset. Invalid UUIDs and corrupt saves disable only that atlas UUID. Atlas screen, hand, and inventory selection controls the displayed atlas only. While the atlas screen is open, that atlas stays selected while the player still has it. Otherwise, selection priority is main hand, offhand, an equipped atlas, then the first atlas in inventory slots 0-35.
+
+The atlas key uses a separate priority: equipped atlas, selected main hand, offhand, then the first atlas in inventory slots 0-35.
 
 Atlasbound does not load a chunk to record it. It uses Surveyor's loaded terrain summary to build updates. Atlasbound's explored mask controls which terrain bits go into that atlas view. Surveyor's own player and group exploration continues as a separate, shared system.
 
@@ -33,7 +35,7 @@ These checks need a throwaway world. They have not been done yet.
 1. Craft an atlas. Confirm it gets an ID and save file.
 2. Copy an atlas. Confirm both copies show the same explored chunks.
 3. Carry two different atlases together and explore. Confirm both record the same new chunks and each view shows its own history.
-4. Carry atlases in inventory slots 0-35 and offhand. Confirm each distinct UUID records new loaded chunks, duplicate UUIDs share one dataset, and dropped or container-stored atlases stop recording.
+4. Carry atlases in inventory slots 0-35, offhand, and an equipped Trinkets or Curios atlas. Confirm each distinct UUID records new loaded chunks, duplicate UUIDs share one dataset, and dropped or container-stored atlases stop recording.
 5. Put atlases in the main hand and offhand. Confirm the main hand takes priority.
 6. Open the screen, move the atlas to another slot, and explore loaded chunks. Confirm the open atlas stays selected while you have it.
 7. Transfer a copy to another player. Confirm the same UUID sees the same data and either holder can select it.
@@ -48,3 +50,4 @@ These checks need a throwaway world. They have not been done yet.
 16. Use the delete toolbar action on the marker. Confirm it is removed.
 17. Restart the world. Confirm the marker remains.
 18. Copy an atlas with the same UUID and confirm it sees the same markers. Use a different UUID and confirm it has a separate marker set.
+19. With Trinkets and Curios tested separately, equip an atlas and confirm the key opens it. Remove it while its screen is open, with no copy of that atlas in inventory or either hand, and confirm the selection closes. Confirm the slot accepts the atlas item.

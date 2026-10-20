@@ -12,6 +12,8 @@ base.archivesName = property("mod.id") as String
 repositories {
     maven("https://repo.sleeping.town/")
     maven("https://raw.githubusercontent.com/Rasa-Novum/Rosetta_Library/maven/")
+    maven("https://maven.ladysnake.org/releases")
+    maven("https://maven.theillusivec4.top/")
 }
 
 dependencies {
@@ -21,6 +23,10 @@ dependencies {
     modImplementation("net.fabricmc.fabric-api:fabric-api:${property("deps.fabric_api")}")
     modImplementation("folk.sisby:surveyor:${property("deps.surveyor")}")
     modImplementation("folk.sisby:antique-atlas:${property("deps.antique_atlas")}")
+    modCompileOnly("dev.emi:trinkets:${property("deps.trinkets")}")
+    compileOnly("top.theillusivec4.curios:curios-neoforge:${property("deps.curios")}:api") {
+        isTransitive = false
+    }
     val rosetta = "com.rasanovum.rosetta:rosetta-1.21.1-fabric:${property("deps.rosetta")}"
     modImplementation(rosetta)
     include(rosetta)
@@ -61,6 +67,8 @@ tasks.processResources {
         "loader" to project.property("deps.fabric_loader"),
         "surveyor" to project.property("deps.surveyor"),
         "antiqueAtlas" to project.property("deps.antique_atlas"),
+        "trinkets" to project.property("deps.trinkets"),
+        "curios" to project.property("deps.curios"),
         "rosetta" to project.property("deps.rosetta"),
         "authors" to project.property("mod.authors"),
         "homepage" to project.property("mod.homepage"),
